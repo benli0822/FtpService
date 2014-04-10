@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="Shift_JIS"?>
+
+<!-- project tag
+ name   ：工程名字
+ default：默认执行的target
+ basedir：ant执行的根目录 -->
+<project name="ftp" default="runtests" basedir=".">
+	<!-- source路径 -->
+	<property name="src.dir" value="src" />
+
+	<!-- 编译后class路径 -->
+	<property name="build.dir" value="classes" />
+
+	<!-- JavaDoc路径 -->
+	<property name="build.apidocs" value="${build.dir}/doc" />
+
+	<!-- 测试source路径
+  test.dir   : JUnit执行路径
+ -->
+	<property name="testSrc.dir" value="test" />
+
+	<!-- test报告路径 -->
+	<property name="reports.dir" value="./doc/report" />
+
+	<!-- test结果统计路径 -->
+	<property name="correctreports.dir" value="${reports.dir}/html" />
+
+	<!-- target tag
+  name         ：target名字
+  depends    ：依赖target,先执行被依赖的target.
+  description：target描述
+ -->
+	<target name="JUNIT">
+		<available property="junit.present" classname="junit.framework.TestCase" />
+	</target>
+
+	<target name="compile" depends="JUNIT">
+		<mkdir dir="${build.dir}" />
+		<depend srcdir="${src.dir}" destdir="${build.classes}" />
+		<javac srcdir="${src.dir}" destdir="${build.classes}">
+			<classpath>
+				<pathelement path="${build.classes}" />
+				<pathelement path="${java.class.path}/" />
+			</classpath>
+			<include name="**/*.java" />
+		</javac>
+	</target>
+
+
+	<target name="testcompile" depends="compile">
+		<depend srcdir="${testSrc.dir}" destdir="${build.classes}" />
+
+		<!-- test class文件与正式class文件，输出到同一目录下
+
+也就是说正式source和测试source的原文件（java文件）不同目录，但编译后的class文件同目录。
+
+-->
+		<javac srcdir="${testSrc.dir}" destdir="${build.classes}" fork="true" memoryMaximumSize="512m">
+			<compilerarg value="-Xlint:unchecked" />
+			<classpath>
+				<pathelement path="${build.classes}" />
+				<pathelement path="${java.class.path}/" />
+				<fileset dir="lib">
+					<include name="*.jar" />
+				</fileset>
+			</classpath>
+			<include name="**/*.java" />
+		</javac>
+	</target>
+
+
+	<target name="rmi-compile" depends="compile">
+		<rmic base="${build.classes}" verify="true">
+			<classpath>
+				<pathelement path="${build.classes}" />
+				<pathelement path="${java.class.path}/" />
+			</classpath>
+			<include name="**/*.class" />
+			<exclude name="**/test/*.class" />
+		</rmic>
+	</target>
+
+	<target name="runtests" depends="testcompile">
+		<delete>
+			<fileset dir="${reports.dir}" includes="**/*" />
+		</delete>
+		<mkdir dir="${reports.dir}" />
+
+		<junit printsummary="on" failureProperty="fail">
+			<classpath>
+				<pathelement location="lib/***.jar" />
+				<pathelement location="lib/***.jar" />
+				<pathelement path="${build.classes}" />
+				<pathelement path="${java.class.path}/" />
+			</classpath>
+
+			<formatter type="xml" />
+
+			<batchtest fork="yes" todir="${reports.dir}">
+				<fileset dir="${src.dir}">
+					<!-- 只执行test CLASS -->
+					<include name="${test.dir}**/*Test.java" />
+				</fileset>
+			</batchtest>
+		</junit>
+
+		<junitreport todir="${reports.dir}">
+			<fileset dir="${reports.dir}">
+				<include name="TEST-*.xml" />
+			</fileset>
+
+			<report format="frames" todir="${correctreports.dir}" />
+		</junitreport>
+	</target>
+
+	<!-- JavaDoc生成 -->
+	<target name="apidocs" depends="compile" description="JavaDoc生成">
+		<javadoc sourcepath="${src.dir}" destdir="${build.apidocs}" packagenames="AAA.BBB.CCC.*" author="true" version="true" notree="true" nonavbar="true" noindex="true" windowtitle="MyProject API" doctitle="Regulation" public="true" />
+	</target>
+
+	<!-- Jar生成 -->
+	<target name="make-jar" depends="rmi-compile" description="Jar生成">
+		<delete file="myproject.jar" />
+		<jar jarfile="myproject.jar" manifest="MANIFEST.MF">
+			<fileset dir="classes">
+
+				<!--除去test文件-->
+				<exclude name="**/test/" />
+			</fileset>
+		</jar>
+	</target>
+</project>
